@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PSO Autopilot - Official Manual</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --text-color: #c9d1d9;
+            --accent-color: #58a6ff;
+            --sidebar-bg: #161b22;
+            --border-color: #30363d;
+            --code-bg: #0d1117;
+            --header-color: #ffffff;
+            --highlight-bg: rgba(88, 166, 255, 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 280px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 24px 20px;
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .sidebar-header h2 {
+            margin: 0;
+            color: var(--accent-color);
+            font-size: 1.4rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .sidebar-nav {
+            padding: 20px 0;
+        }
+
+        .sidebar-nav ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-nav li a {
+            display: block;
+            padding: 10px 24px;
+            color: var(--text-color);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar-nav li a:hover {
+            background-color: var(--highlight-bg);
+            color: var(--header-color);
+            border-left-color: var(--accent-color);
+        }
+
+        /* Content Area */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 40px 60px;
+            scroll-behavior: smooth;
+        }
+
+        .content-inner {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        /* Typography */
+        h1, h2, h3, h4 {
+            color: var(--header-color);
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            font-weight: 600;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.3em;
+        }
+
+        h2 { font-size: 1.8rem; }
+        h3 { font-size: 1.4rem; color: var(--accent-color); }
+
+        p { margin-bottom: 1.2em; }
+
+        /* Callouts / Highlights */
+        .callout {
+            padding: 16px 20px;
+            background-color: var(--highlight-bg);
+            border-left: 4px solid var(--accent-color);
+            border-radius: 0 6px 6px 0;
+            margin: 20px 0;
+        }
+
+        .callout h4 { margin-top: 0; margin-bottom: 10px; }
+        .callout p { margin-bottom: 0; }
+
+        .usp-box {
+            background-color: var(--sidebar-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 24px;
+            margin: 24px 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .usp-box h3 { margin-top: 0; }
+
+        /* Code Blocks */
+        pre {
+            background-color: var(--sidebar-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 16px;
+            overflow-x: auto;
+            font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.9rem;
+        }
+
+        code {
+            font-family: inherit;
+            background-color: rgba(255,255,255,0.1);
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        
+        pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+
+        /* Images / Diagrams */
+        .diagram {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #1e2630 0%, #0d1117 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .diagram-text {
+            color: var(--accent-color);
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-align: center;
+            z-index: 2;
+        }
+
+        .diagram-grid {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            z-index: 1;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .badge-greg {
+            background-color: var(--code-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            margin-bottom: 12px;
+        }
+
+        .badge-greg:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        .badge-fab {
+            position: fixed;
+            top: 30px;
+            right: 40px;
+            background-color: var(--highlight-bg);
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        .badge-fab:hover {
+            background-color: var(--accent-color);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(88, 166, 255, 0.4);
+        }
+
+        /* Utility */
+        hr {
+            border: 0;
+            height: 1px;
+            background-color: var(--border-color);
+            margin: 40px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <a href="https://www.gregorigin.com" target="_blank" class="badge badge-greg">www.gregorigin.com</a>
+            <h2>PSO Autopilot</h2>
+        </div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li><a href="#introduction">1. Introduction</a></li>
+                <li><a href="#core-usps">2. Core Technologies (USPs)</a></li>
+                <li><a href="#quick-start">3. Quick Start Guide</a></li>
+                <li><a href="#configuration">4. Configuration Settings</a></li>
+                <li><a href="#ui-integration">5. UI & Blueprint Integration</a></li>
+                <li><a href="#demo-level">6. Setting up the Demo</a></li>
+                <li><a href="#troubleshooting">7. Troubleshooting</a></li>
+            </ul>
+        </nav>
+        <div style="margin-top: auto; padding: 20px; text-align: center; color: var(--border-color); font-size: 0.75rem;">
+            &copy; Andras Gregori 2026
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="content">
+        <a href="https://www.fab.com" target="_blank" class="badge badge-fab">Available on Fab</a>
+        <div class="content-inner">
+            
+            <section id="introduction">
+                <h1>PSO Autopilot Manual</h1>
+                <p>Welcome to <strong>PSO Autopilot</strong>. This plugin is the definitive, "AAA" solution to Unreal Engine 5's notorious shader compilation stutter.</p>
+                <p>Most "Shader Compilation" plugins on the marketplace attempt to solve stutter by brute-forcing the Engine—loading all of your project's assets into memory simultaneously. If you are building a massive 50GB open-world game, this primitive approach guarantees catastrophic RAM spikes, completely frozen loading screens, and eventually, Out-Of-Memory (OOM) crashes on consoles or lower-end PCs.</p>
+                <p><strong>PSO Autopilot is different.</strong> It was engineered from the ground up to orchestrate Unreal's native hardware pipeline asynchronously, managing memory, threads, and driver caches with surgical precision.</p>
+            </section>
+
+            <hr>
+
+            <section id="core-usps">
+                <h2>The 3 Pillars of PSO Autopilot</h2>
+                <p>Our architecture is built upon three Unique Selling Propositions (USPs) that completely destroy the competition.</p>
+
+                <div class="usp-box">
+                    <h3>USP 1: Memory-Safe Chunking (Materials & VFX)</h3>
+                    <p>Instead of loading thousands of assets simultaneously, PSO Autopilot utilizes Unreal's <code>FStreamableManager</code> to asynchronously stream your Materials and <strong>Niagara Systems</strong> into memory in strictly controlled batches (e.g., 100 assets at a time).</p>
+                    <p>Once a batch is successfully compiled by the Engine's native <code>FShaderPipelineCache</code>, the plugin explicitly drops all asset references and requests a non-blocking Garbage Collection pass. The result? Your RAM footprint remains completely flat throughout the entire process, making this tool infinitely scalable for massive projects.</p>
+                    <div class="diagram">
+                        <div class="diagram-grid"></div>
+                        <div class="diagram-text">Batch 1 Loaded → PSOs Compiled → References Dropped → GC Sweeps → Batch 2 Loaded</div>
+                    </div>
+                </div>
+
+                <div class="usp-box">
+                    <h3>USP 2: The Seamless Loading Screen</h3>
+                    <p>A frozen loading screen feels like a crash to a player. PSO Autopilot uses advanced C++ time-slicing within the Game Thread's <code>Tick</code> function. It processes Asset Registry queries and shader assignments for a strictly allocated timeframe per frame (e.g., <code>5.0 milliseconds</code>).</p>
+                    <p>If the time limit is reached, it yields execution back to the Engine. This guarantees that your loading screen videos, UI spinners, and progress bars remain <strong>buttery smooth at 60fps</strong> while intense compilation happens quietly in the background.</p>
+                </div>
+
+                <div class="usp-box">
+                    <h3>USP 3: Zero-Redundancy Boot (Smart Cache Hashing)</h3>
+                    <p>Players shouldn't have to wait for shaders they've already compiled. When a player boots your game for the second time, PSO Autopilot intelligently queries the local driver's cache state.</p>
+                    <p>If it detects that the Pipeline State Objects (PSOs) for your project are already fully digested and stored on the user's hard drive from a previous play session, the plugin <strong>instantly skips the entire warmup sequence</strong>. A process that took two minutes on the first launch will take 0.05 seconds on all subsequent launches.</p>
+                </div>
+            </section>
+
+            <hr>
+
+            <section id="quick-start">
+                <h2>Quick Start Guide</h2>
+                <p>Follow these steps to get PSO Autopilot running in your project in under 5 minutes:</p>
+                <ol>
+                    <li>Ensure the <strong>PSOAutopilot</strong> folder is located in your project's <code>Plugins</code> directory.</li>
+                    <li>Launch your project in Unreal Engine 5.</li>
+                    <li>Go to <strong>Edit > Project Settings</strong>. Scroll down the left sidebar to the <strong>Plugins</strong> section and click on <strong>PSO Autopilot</strong>.</li>
+                    <li>Under <strong>Targeting</strong>, add the main directories containing your Materials and Niagara Systems (e.g., <code>/Game/Characters</code>, <code>/Game/VFX</code>).</li>
+                    <li>Open your primary Loading Screen Blueprint or GameInstance.</li>
+                    <li>Use the <strong>Get Game Instance Subsystem</strong> node and select <code>PSOAutopilotSubsystem</code>.</li>
+                    <li>Call the <strong>Start Warmup</strong> node.</li>
+                </ol>
+            </section>
+
+            <hr>
+
+            <section id="configuration">
+                <h2>Configuration Settings</h2>
+                <p>PSO Autopilot exposes powerful variables to Project Settings so you can tailor the memory/performance balance precisely to your target hardware (PC vs. Console vs. Mobile).</p>
+
+                <div class="callout">
+                    <h4>Directories To Scan</h4>
+                    <p>An array of paths (e.g., <code>/Game/Weapons</code>). The plugin will recursively scan these folders for <code>UMaterialInterface</code> and <code>UNiagaraSystem</code> assets. <em>Tip: Do not just put <code>/Game/</code> if you have 100GB of audio and textures; isolate your heavy visual folders to speed up the initial Asset Registry query.</em></p>
+                </div>
+
+                <div class="callout">
+                    <h4>Batch Size</h4>
+                    <p><strong>Default: 100</strong>. The maximum number of assets loaded into RAM simultaneously. Lower this to 50 if targeting mobile or low-RAM consoles to prevent memory spikes.</p>
+                </div>
+
+                <div class="callout">
+                    <h4>bGarbageCollectBetweenBatches</h4>
+                    <p><strong>Default: True</strong>. Tells the Engine to asynchronously clean up unloaded memory after every batch. Only turn this off if you are managing GC manually in your own C++ code.</p>
+                </div>
+
+                <div class="callout">
+                    <h4>Max Processing Time Ms Per Frame</h4>
+                    <p><strong>Default: 5.0</strong>. The time budget for the plugin's Game Thread operations. A 60fps frame takes 16.6ms. Leaving this at 5.0 gives the Engine 11.6ms to render your UI animations smoothly.</p>
+                </div>
+            </section>
+
+            <hr>
+
+            <section id="ui-integration">
+                <h2>UI & Blueprint Integration</h2>
+                <p>The <code>PSOAutopilotSubsystem</code> provides robust Blueprint delegates to drive your loading screen UI.</p>
+                
+                <h3>On Progress Updated</h3>
+                <p>Fires continuously during the warmup phase.</p>
+                <ul>
+                    <li><strong>Overall Progress (Float):</strong> A normalized 0.0 to 1.0 value representing the total completion percentage. Bind this directly to a UMG ProgressBar.</li>
+                    <li><strong>Current Status Message (String):</strong> Live telemetry of the internal state. It will cycle through messages like <code>Scanning for Assets...</code>, <code>Loading Batch of 100...</code>, <code>Compiling PSOs... (42 remaining)</code>, and <code>Clearing Memory...</code>.</li>
+                </ul>
+
+                <h3>On Warmup Complete</h3>
+                <p>Fires exactly once when the entire process is finished (or if it is instantly skipped via USP 3). Bind this event to close your loading screen and load your primary gameplay level.</p>
+            </section>
+
+            <hr>
+
+            <section id="demo-level">
+                <h2>Setting up the Demo</h2>
+                <p>PSO Autopilot includes built-in C++ architecture to create a "Torture Test" demo, allowing you to visually prove the USPs to your team or clients.</p>
+                
+                <ol>
+                    <li>Create a new level (e.g., <code>Demo_PSOTorture</code>).</li>
+                    <li>In your plugin's <code>Content/Demo</code> folder, create a Widget Blueprint named <code>WBP_PSOAutopilotHUD</code> and reparent it to the C++ class <code>PSOAutopilotDemoWidget</code>.</li>
+                    <li>Add the following elements to your widget, naming them exactly:
+                        <ul>
+                            <li><code>SpinnerImage</code> (Image) - This will automatically rotate at 60fps to prove USP 2.</li>
+                            <li><code>ProgressBar</code> (ProgressBar) - Auto-binds to completion percentage.</li>
+                            <li><code>StatusText</code> (TextBlock) - Auto-binds to live telemetry.</li>
+                            <li><code>TimerText</code> (TextBlock) - Visualizes how fast USP 3 (Zero-Redundancy) skips loading.</li>
+                        </ul>
+                    </li>
+                    <li>Drag a <code>PSOAutopilotDemoManager</code> actor into your level.</li>
+                    <li>In the Details panel of the Manager actor, set the <code>HUDClass</code> to your <code>WBP_PSOAutopilotHUD</code>.</li>
+                    <li>Point your Project Settings at a folder filled with massive, uncompiled assets, and press Play!</li>
+                </ol>
+            </section>
+
+            <hr>
+
+            <section id="troubleshooting">
+                <h2>Troubleshooting</h2>
+                
+                <h4>Q: The progress bar stays at 0% for a long time on boot.</h4>
+                <p><strong>A:</strong> Unreal Engine's Asset Registry initializes asynchronously in the background when the game boots. PSO Autopilot intelligently waits for this background thread to finish before querying assets to ensure none are missed. If your project is massive, this initial wait is normal.</p>
+
+                <h4>Q: I see "Compiling PSOs..." in the log, but no shaders are actually building.</h4>
+                <p><strong>A:</strong> Ensure your project is configured to actually generate shader caches. In your <code>DefaultProject.ini</code>, verify that <code>bShareMaterialShaderCode</code> is enabled, and test in a Packaged Build. The Editor environment handles PSOs differently than a deployed executable.</p>
+            </section>
+
+            <p style="text-align: center; margin-top: 60px; color: var(--border-color);">
+                <em>Copyright &copy; 2026 GregOrigin. All Rights Reserved.</em>
+            </p>
+        </div>
+    </div>
+
+</body>
+</html>

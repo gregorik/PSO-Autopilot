@@ -1,3 +1,7 @@
+<p align="center">
+<img src="Docs/PSO logo2.png" alt="Logo" width="500"/>
+</p>
+
 # PSO Autopilot (Core)
 
 ## A Solution to Unreal Engine 5 OOM Crashes
@@ -22,6 +26,7 @@ A detailed manual is available at: https://gregorigin.com/PSO_Autopilot/
 6. Call Start Warmup.
 
 *Code by Andras Gregori. MIT License.*
+
 
 
 

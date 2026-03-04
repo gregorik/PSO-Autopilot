@@ -9,6 +9,8 @@ The "Shader Compilation" plugins on assorted marketplaces brute-force load all o
 ### The Core Feature: Memory-Safe Chunking
 Instead of loading thousands of materials simultaneously, PSO Autopilot Core uses the FStreamableManager to **asynchronously stream** your Materials in controlled batches (e.g., 100 at a time). After a batch is compiled via the Engine's native FShaderPipelineCache, the plugin explicitly drops references and yields to Unreal's asynchronous Garbage Collection. Your RAM footprint remains completely flat, making this tool safe for massive open-world projects.
 
+A detailed manual is available at: https://gregorigin.com/PSO_Autopilot/
+
 ---
 
 ## How to Use
@@ -20,6 +22,7 @@ Instead of loading thousands of materials simultaneously, PSO Autopilot Core use
 6. Call Start Warmup.
 
 *Code by Andras Gregori. MIT License.*
+
 
 
 

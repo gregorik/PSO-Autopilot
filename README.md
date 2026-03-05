@@ -4,6 +4,8 @@
 
 # PSO Autopilot (Core)
 
+[Watch a video](https://youtu.be/KS5MhbmniEE)
+
 ## A Solution to Unreal Engine 5 OOM Crashes
 
 The "Shader Compilation" plugins on assorted marketplaces brute-force load all of your assets at once. If you have a massive 50GB project, this will cause your RAM to spike, your loading screen to freeze entirely, and eventually result in an Out-Of-Memory (OOM) crash.
@@ -26,6 +28,7 @@ A detailed manual is available at: https://gregorigin.com/PSO_Autopilot/
 6. Call Start Warmup.
 
 *Code by Andras Gregori. MIT License.*
+
 
 
 

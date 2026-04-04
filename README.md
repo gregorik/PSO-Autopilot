@@ -4,7 +4,8 @@
 
 # PSO Autopilot (Core)
 
-[Watch a video](https://youtu.be/KS5MhbmniEE)
+[Watch a video](https://youtu.be/KS5MhbmniEE)<br>
+[More test runs](https://www.youtube.com/watch?v=YlBrR46wOUc)
 
 ## A Solution to Unreal Engine 5 OOM Crashes
 

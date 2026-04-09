@@ -7,6 +7,8 @@
 [Watch a video](https://youtu.be/KS5MhbmniEE)<br>
 [More test runs](https://www.youtube.com/watch?v=YlBrR46wOUc)
 
+*[This repository deals with advanced bypasses of standard Unreal C++ bottlenecks. 🟢 Currently available for B2B consulting and remote contract/Co-Dev integration (CET Timezone). [Contact form.](https://gregorigin.com/contact.html)]*
+
 ## A Solution to Unreal Engine 5 OOM Crashes
 
 The "Shader Compilation" plugins on assorted marketplaces brute-force load all of your assets at once. If you have a massive 50GB project, this will cause your RAM to spike, your loading screen to freeze entirely, and eventually result in an Out-Of-Memory (OOM) crash.

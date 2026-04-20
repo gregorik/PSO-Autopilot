@@ -4,7 +4,8 @@
 
 # ✈️ PSO Autopilot (Core)
 
-[📺 Watch a video](https://youtu.be/KS5MhbmniEE)<br>
+[📺 Watch a video (v0.1)](https://youtu.be/KS5MhbmniEE)<br>
+[📺 Watch an updated video (v1.1)](https://www.youtube.com/watch?v=eYjHRwzfteQ)<br>
 [📺 More test runs](https://www.youtube.com/watch?v=YlBrR46wOUc)
 
 ![PSOProm](https://github.com/user-attachments/assets/d1c8acef-b2f0-4050-8ea0-365a9dbd1686)

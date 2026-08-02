@@ -30,7 +30,6 @@ public:
 	UPROPERTY(EditAnywhere, Config, Category = "Memory Management")
 	bool bGarbageCollectBetweenBatches;
 
-	/** The maximum amount of time (in milliseconds) the plugin is allowed to spend compiling shaders per frame. Keeps loading screens smooth. */
-	UPROPERTY(EditAnywhere, Config, Category = "Performance (Seamless UI)", meta=(ClampMin="0.5", ClampMax="33.0"))
-	float MaxProcessingTimeMsPerFrame;
+	// Note: this edition yields between batches, not within one, so there is no per-frame time
+	// budget to configure. Intra-frame time-slicing of the game thread is a Pro feature.
 };

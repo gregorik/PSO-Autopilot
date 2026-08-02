@@ -31,8 +31,9 @@ void UPSOAutopilotCoreDemoWidget::NativeTick(const FGeometry& MyGeometry, float 
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 
-	// USP 2 Validation: If time-slicing works, this spinner will stay perfectly smooth at 60fps.
-	// If it stutters or freezes, the background processing is blocking the Game Thread.
+	// The spinner is the honest indicator of what this edition does: it keeps animating between
+	// batches, and hitches while a batch is being warmed, because Core yields between batches
+	// rather than inside one. Removing that hitch is what Pro's time-slicing buys.
 	if (SpinnerImage)
 	{
 		SpinnerAngle += InDeltaTime * 360.0f; // 1 full rotation per second

@@ -6,10 +6,10 @@
 	"Description": "Memory-safe, asynchronous shader compilation and PSO warm-up system to eliminate in-game stutters without freezing loading screens.",
 	"Category": "Performance",
 	"CreatedBy": "GregOrigin",
-	"CreatedByURL": "",
-	"DocsURL": "",
+	"CreatedByURL": "www.gregorigin.com",
+	"DocsURL": "https://github.com/gregorik/PSO-Autopilot",
 	"MarketplaceURL": "",
-	"SupportURL": "",
+	"SupportURL": "https://discord.gg/nqYQ5mtmHb",
 	"EngineVersion": "5.7.0",
 	"CanContainContent": true,
 	"IsBetaVersion": false,
@@ -25,12 +25,6 @@
 				"Mac",
 				"Linux"
 			]
-		}
-	],
-	"Plugins": [
-		{
-			"Name": "Niagara",
-			"Enabled": true
 		}
 	]
 }

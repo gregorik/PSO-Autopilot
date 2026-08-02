@@ -4,11 +4,11 @@
 
 UPSOAutopilotCoreSettings::UPSOAutopilotCoreSettings()
 {
-	// Default Settings tailored for AAA stability
+	// Conservative defaults: small enough batches that peak memory stays flat on large projects.
 	BatchSize = 100;
 	bGarbageCollectBetweenBatches = true;
-	MaxProcessingTimeMsPerFrame = 5.0f; // 5ms leaves plenty of frame budget for UI animations (60fps is 16.6ms)
-	
+
+
 	// Default to Game root
 	FDirectoryPath RootPath;
 	RootPath.Path = TEXT("/Game");

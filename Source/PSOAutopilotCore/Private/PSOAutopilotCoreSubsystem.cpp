@@ -23,20 +23,25 @@ void UPSOAutopilotCoreSubsystem::Deinitialize()
 	{
 		CurrentStreamableHandle->CancelHandle();
 	}
+	CurrentStreamableHandle.Reset();
+
+	// Drop the borrowed pointers with the handle that was keeping them alive, and leave the state
+	// machine idle so a torn-down subsystem is never left mid-warmup.
+	LoadedBatchAssets.Reset();
+	CurrentState = EPSOWarmupState::Idle;
+
 	Super::Deinitialize();
 }
 
 void UPSOAutopilotCoreSubsystem::Tick(float DeltaTime)
 {
-	// Issue 3 fix: Wait for Asset Registry
 	if (CurrentState == EPSOWarmupState::Scanning)
 	{
 		ScanForAssets();
 	}
-	// USP 2: Time-sliced processing on the Game Thread to keep UI smooth
 	else if (CurrentState == EPSOWarmupState::ProcessingBatch)
 	{
-		ProcessBatchTimeSliced();
+		ProcessLoadedBatch();
 	}
 	// Delay GC by one frame to ensure streamable manager fully drops handles
 	else if (CurrentState == EPSOWarmupState::WaitingForGC)
@@ -71,11 +76,13 @@ void UPSOAutopilotCoreSubsystem::StartWarmup()
 	}
 
 	UE_LOG(LogPSOAutopilotCore, Log, TEXT("Starting PSO Autopilot Warmup..."));
-	
-	// Issue 1 fix: Ensure the pipeline cache is actively compiling PSOs
+
+	// Make sure the engine's pipeline cache is actively compiling PSOs while we work.
 	FShaderPipelineCache::ResumeBatching();
 
 	TotalAssetsProcessed = 0;
+	CurrentAssetIndexInBatch = 0;
+	PipelineWaitStartSeconds = -1.0;
 	CurrentState = EPSOWarmupState::Scanning;
 	AdvanceStateMachine();
 }
@@ -111,7 +118,7 @@ void UPSOAutopilotCoreSubsystem::ScanForAssets()
 {
 	FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
 	
-	// Issue 3 fix: Prevent premature scanning by waiting for the registry to finish
+	// Scanning before the registry has finished loading silently returns a partial asset list.
 	if (AssetRegistryModule.Get().IsLoadingAssets())
 	{
 		OnProgressUpdated.Broadcast(0.0f, TEXT("Waiting for Asset Registry to finish loading..."));
@@ -167,19 +174,15 @@ void UPSOAutopilotCoreSubsystem::BeginLoadingBatch()
 		return;
 	}
 
-	// Determine Batch Size (USP 1: Memory-Safe Chunking)
-	int32 BatchSize = FMath::Min(Settings->BatchSize, AllDiscoveredAssets.Num());
-	CurrentBatchPaths.Empty();
-	
-	for (int32 i = 0; i < BatchSize; ++i)
-	{
-		CurrentBatchPaths.Add(AllDiscoveredAssets[0]);
-		AllDiscoveredAssets.RemoveAt(0);
-	}
+	// Memory-safe chunking: take the next slice off the front in one move. Removing element 0 in a
+	// loop shifts the whole remaining array each time, which is quadratic in the asset count and
+	// very visible when scanning a large /Game.
+	const int32 BatchSize = FMath::Min(Settings->BatchSize, AllDiscoveredAssets.Num());
+	CurrentBatchPaths.Reset(BatchSize);
+	CurrentBatchPaths.Append(AllDiscoveredAssets.GetData(), BatchSize);
+	AllDiscoveredAssets.RemoveAt(0, BatchSize);
 
-	FString StatusMsg = FString::Printf(TEXT("Loading Batch of %d Assets..."), BatchSize);
-	float Progress = (float)TotalAssetsProcessed / (float)FMath::Max(1, TotalAssetsToProcess);
-	OnProgressUpdated.Broadcast(Progress, StatusMsg);
+	BroadcastProgress(FString::Printf(TEXT("Loading Batch of %d Assets..."), BatchSize));
 
 	// Async load to prevent main thread blocking
 	CurrentStreamableHandle = StreamableManager.RequestAsyncLoad(CurrentBatchPaths, FStreamableDelegate::CreateUObject(this, &UPSOAutopilotCoreSubsystem::OnBatchLoaded));
@@ -198,42 +201,61 @@ void UPSOAutopilotCoreSubsystem::OnBatchLoaded()
 	// Processing will now naturally pick up in the Tick() function
 }
 
-void UPSOAutopilotCoreSubsystem::ProcessBatchTimeSliced()
+void UPSOAutopilotCoreSubsystem::ProcessLoadedBatch()
 {
-	const UPSOAutopilotCoreSettings* Settings = GetDefault<UPSOAutopilotCoreSettings>();
-	double StartTime = FPlatformTime::Seconds();
-	
-	// USP 2: Time-sliced execution. We process as many assets as we can within our Ms frame budget.
-	while (CurrentAssetIndexInBatch < LoadedBatchAssets.Num())
+	// Core warms a whole batch in one pass and yields *between* batches. Intra-frame time-slicing
+	// of the game thread is a Pro feature and is deliberately not implemented here -- see the
+	// feature comparison in README.md. Expect a visible hitch while a batch is warmed; memory
+	// safety, not frame pacing, is what this edition guarantees.
+	if (CurrentAssetIndexInBatch < LoadedBatchAssets.Num())
 	{
-		UObject* Asset = LoadedBatchAssets[CurrentAssetIndexInBatch];
-		if (Asset)
+		for (; CurrentAssetIndexInBatch < LoadedBatchAssets.Num(); ++CurrentAssetIndexInBatch)
 		{
-			ForceAssetWarmup(Asset);
+			if (UObject* Asset = LoadedBatchAssets[CurrentAssetIndexInBatch])
+			{
+				ForceAssetWarmup(Asset);
+			}
+
+			TotalAssetsProcessed++;
 		}
 
-		CurrentAssetIndexInBatch++;
-		TotalAssetsProcessed++;
-
-		// Broadcast high-frequency updates for buttery smooth UI
-		float Progress = (float)TotalAssetsProcessed / (float)FMath::Max(1, TotalAssetsToProcess);
-		OnProgressUpdated.Broadcast(Progress, TEXT("Compiling Shaders..."));
-
-		// Synchronous processing for Core version
+		// One update per batch, not per asset: this delegate is a dynamic multicast into Blueprint,
+		// and firing it hundreds of times in a single frame costs more than the work it reports on.
+		// Only the last value of the frame is ever seen anyway.
+		BroadcastProgress(TEXT("Compiling Shaders..."));
 	}
 
-	// Issue 1 fix: Actually wait for PSOs to compile (using UE's built-in system) before proceeding
-	int32 PSOsRemaining = FShaderPipelineCache::NumPrecompilesRemaining();
+	// Let the engine's own pipeline cache drain before releasing the batch, but never wait forever:
+	// if the queue stops draining, a loading screen gated on OnWarmupComplete would hang for good.
+	const int32 PSOsRemaining = FShaderPipelineCache::NumPrecompilesRemaining();
 	if (PSOsRemaining > 0)
 	{
-		float Progress = (float)TotalAssetsProcessed / (float)FMath::Max(1, TotalAssetsToProcess);
-		OnProgressUpdated.Broadcast(Progress, FString::Printf(TEXT("Compiling PSOs... (%d remaining)"), PSOsRemaining));
-		return; // Yield and wait for next frame
+		if (PipelineWaitStartSeconds < 0.0)
+		{
+			PipelineWaitStartSeconds = FPlatformTime::Seconds();
+		}
+
+		const double WaitedSeconds = FPlatformTime::Seconds() - PipelineWaitStartSeconds;
+		if (WaitedSeconds < MaxPipelineWaitSeconds)
+		{
+			BroadcastProgress(FString::Printf(TEXT("Compiling PSOs... (%d remaining)"), PSOsRemaining));
+			return; // Yield and re-check next frame.
+		}
+
+		UE_LOG(LogPSOAutopilotCore, Warning,
+			TEXT("Gave up after %.1fs waiting for the PSO queue to drain (%d remaining). Continuing so warmup cannot stall."),
+			WaitedSeconds, PSOsRemaining);
 	}
 
-	// If we finish the loop and PSO compilation without yielding, the batch is done.
+	PipelineWaitStartSeconds = -1.0;
 	CurrentState = EPSOWarmupState::UnloadingBatch;
 	AdvanceStateMachine();
+}
+
+void UPSOAutopilotCoreSubsystem::BroadcastProgress(const FString& StatusMessage) const
+{
+	const float Progress = (float)TotalAssetsProcessed / (float)FMath::Max(1, TotalAssetsToProcess);
+	OnProgressUpdated.Broadcast(Progress, StatusMessage);
 }
 
 void UPSOAutopilotCoreSubsystem::ForceAssetWarmup(UObject* Asset)
@@ -260,8 +282,8 @@ void UPSOAutopilotCoreSubsystem::UnloadBatchAndGC()
 
 	if (Settings->bGarbageCollectBetweenBatches)
 	{
-		OnProgressUpdated.Broadcast((float)TotalAssetsProcessed / (float)FMath::Max(1, TotalAssetsToProcess), TEXT("Clearing Memory..."));
-		
+		BroadcastProgress(TEXT("Clearing Memory..."));
+
 		// Delay GC by one frame to ensure streamable manager drops handles
 		CurrentState = EPSOWarmupState::WaitingForGC;
 		return;

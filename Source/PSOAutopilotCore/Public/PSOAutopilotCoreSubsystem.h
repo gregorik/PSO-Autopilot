@@ -24,8 +24,12 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FPSOWarmupProgressDelegate, float, 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FPSOWarmupCompleteDelegate);
 
 /**
- * The core engine subsystem handling Memory-Safe Chunking and Time-Sliced PSO compilation.
- * Destroys the competition by ensuring loading screens never freeze and games never crash from OOM.
+ * Warms material shaders in memory-safe chunks: assets are streamed in batches, warmed, then
+ * released and garbage collected before the next batch, so peak memory stays flat on projects far
+ * too large to load at once.
+ *
+ * Scope note: this edition yields between batches, not within one. Intra-frame time-slicing of the
+ * game thread, smart cache skipping and engine PSO pacing are Pro features -- see README.md.
  */
 UCLASS()
 class PSOAUTOPILOTCORE_API UPSOAutopilotCoreSubsystem : public UGameInstanceSubsystem, public FTickableGameObject
@@ -54,16 +58,26 @@ public:
 	FPSOWarmupCompleteDelegate OnWarmupComplete;
 
 private:
-	EPSOWarmupState CurrentState;
-	
+	/** Upper bound on how long a single batch waits for the engine's PSO queue to drain. */
+	static constexpr double MaxPipelineWaitSeconds = 30.0;
+
+	EPSOWarmupState CurrentState = EPSOWarmupState::Idle;
+
 	TArray<FSoftObjectPath> AllDiscoveredAssets;
 	TArray<FSoftObjectPath> CurrentBatchPaths;
+
+	/**
+	 * Raw pointers, kept alive solely by CurrentStreamableHandle. Never hold these without the
+	 * handle, and never keep them past UnloadBatchAndGC().
+	 */
 	TArray<UObject*> LoadedBatchAssets;
 
-	int32 TotalAssetsToProcess;
-	int32 TotalAssetsProcessed;
-	int32 CurrentBatchIndex;
-	int32 CurrentAssetIndexInBatch;
+	int32 TotalAssetsToProcess = 0;
+	int32 TotalAssetsProcessed = 0;
+	int32 CurrentAssetIndexInBatch = 0;
+
+	/** Timestamp the current batch began waiting on the PSO queue; negative when not waiting. */
+	double PipelineWaitStartSeconds = -1.0;
 
 	TSharedPtr<FStreamableHandle> CurrentStreamableHandle;
 	FStreamableManager StreamableManager;
@@ -72,9 +86,10 @@ private:
 	void ScanForAssets();
 	void BeginLoadingBatch();
 	void OnBatchLoaded();
-	void ProcessBatchTimeSliced();
+	void ProcessLoadedBatch();
 	void UnloadBatchAndGC();
 	void CompleteWarmup();
 
 	void ForceAssetWarmup(UObject* Asset);
+	void BroadcastProgress(const FString& StatusMessage) const;
 };

@@ -29,7 +29,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FPSOWarmupCompleteDelegate);
  * too large to load at once.
  *
  * Scope note: this edition yields between batches, not within one. Intra-frame time-slicing of the
- * game thread, smart cache skipping and engine PSO pacing are Pro features -- see README.md.
+ * game thread, smart cache skipping, setup wizard, and engine PSO pacing are Pro features -- see README.md.
  */
 UCLASS()
 class PSOAUTOPILOTCORE_API UPSOAutopilotCoreSubsystem : public UGameInstanceSubsystem, public FTickableGameObject
@@ -48,6 +48,30 @@ public:
 	/** Starts the highly optimized, asynchronous PSO warm-up process. */
 	UFUNCTION(BlueprintCallable, Category = "PSO Autopilot")
 	void StartWarmup();
+
+	/** Whether the subsystem is currently executing a warmup cycle. */
+	UFUNCTION(BlueprintPure, Category = "PSO Autopilot")
+	bool IsWarmingUp() const;
+
+	/** Returns the current state of the warmup state machine. */
+	UFUNCTION(BlueprintPure, Category = "PSO Autopilot")
+	EPSOWarmupState GetWarmupState() const { return CurrentState; }
+
+	/** Returns overall progress as a normalized float (0.0 to 1.0). */
+	UFUNCTION(BlueprintPure, Category = "PSO Autopilot")
+	float GetOverallProgress() const;
+
+	/** Returns total number of discovered assets to process in this warmup run. */
+	UFUNCTION(BlueprintPure, Category = "PSO Autopilot")
+	int32 GetTotalAssetsToProcess() const { return TotalAssetsToProcess; }
+
+	/** Returns number of assets processed so far in this warmup run. */
+	UFUNCTION(BlueprintPure, Category = "PSO Autopilot")
+	int32 GetTotalAssetsProcessed() const { return TotalAssetsProcessed; }
+
+	/** Returns the latest human-readable status message. */
+	UFUNCTION(BlueprintPure, Category = "PSO Autopilot")
+	FString GetCurrentStatusMessage() const { return LatestStatusMessage; }
 
 	/** Fires continuously during warm-up to drive UI loading bars smoothly. */
 	UPROPERTY(BlueprintAssignable, Category = "PSO Autopilot")
@@ -75,6 +99,7 @@ private:
 	int32 TotalAssetsToProcess = 0;
 	int32 TotalAssetsProcessed = 0;
 	int32 CurrentAssetIndexInBatch = 0;
+	FString LatestStatusMessage;
 
 	/** Timestamp the current batch began waiting on the PSO queue; negative when not waiting. */
 	double PipelineWaitStartSeconds = -1.0;
@@ -91,5 +116,5 @@ private:
 	void CompleteWarmup();
 
 	void ForceAssetWarmup(UObject* Asset);
-	void BroadcastProgress(const FString& StatusMessage) const;
+	void BroadcastProgress(const FString& StatusMessage);
 };

@@ -14,6 +14,7 @@ void UPSOAutopilotCoreSubsystem::Initialize(FSubsystemCollectionBase& Collection
 {
 	Super::Initialize(Collection);
 	CurrentState = EPSOWarmupState::Idle;
+	LatestStatusMessage = TEXT("Ready");
 	UE_LOG(LogPSOAutopilotCore, Log, TEXT("PSO Autopilot Subsystem Initialized."));
 }
 
@@ -28,6 +29,13 @@ void UPSOAutopilotCoreSubsystem::Deinitialize()
 	// Drop the borrowed pointers with the handle that was keeping them alive, and leave the state
 	// machine idle so a torn-down subsystem is never left mid-warmup.
 	LoadedBatchAssets.Reset();
+	AllDiscoveredAssets.Reset();
+	CurrentBatchPaths.Reset();
+	TotalAssetsToProcess = 0;
+	TotalAssetsProcessed = 0;
+	CurrentAssetIndexInBatch = 0;
+	PipelineWaitStartSeconds = -1.0;
+	LatestStatusMessage = TEXT("Deinitialized");
 	CurrentState = EPSOWarmupState::Idle;
 
 	Super::Deinitialize();
@@ -65,6 +73,24 @@ TStatId UPSOAutopilotCoreSubsystem::GetStatId() const
 bool UPSOAutopilotCoreSubsystem::IsTickable() const
 {
 	return CurrentState == EPSOWarmupState::ProcessingBatch || CurrentState == EPSOWarmupState::Scanning || CurrentState == EPSOWarmupState::WaitingForGC;
+}
+
+bool UPSOAutopilotCoreSubsystem::IsWarmingUp() const
+{
+	return CurrentState != EPSOWarmupState::Idle && CurrentState != EPSOWarmupState::Finished;
+}
+
+float UPSOAutopilotCoreSubsystem::GetOverallProgress() const
+{
+	if (CurrentState == EPSOWarmupState::Finished)
+	{
+		return 1.0f;
+	}
+	if (TotalAssetsToProcess <= 0)
+	{
+		return 0.0f;
+	}
+	return FMath::Clamp((float)TotalAssetsProcessed / (float)TotalAssetsToProcess, 0.0f, 1.0f);
 }
 
 void UPSOAutopilotCoreSubsystem::StartWarmup()
@@ -121,23 +147,36 @@ void UPSOAutopilotCoreSubsystem::ScanForAssets()
 	// Scanning before the registry has finished loading silently returns a partial asset list.
 	if (AssetRegistryModule.Get().IsLoadingAssets())
 	{
-		OnProgressUpdated.Broadcast(0.0f, TEXT("Waiting for Asset Registry to finish loading..."));
+		BroadcastProgress(TEXT("Waiting for Asset Registry to finish loading..."));
 		return; // Wait for next tick
 	}
 
 	const UPSOAutopilotCoreSettings* Settings = GetDefault<UPSOAutopilotCoreSettings>();
 	
-	OnProgressUpdated.Broadcast(0.0f, TEXT("Scanning for Assets..."));
+	BroadcastProgress(TEXT("Scanning for Assets..."));
 
 	FARFilter Filter;
 	Filter.bRecursiveClasses = true;
 	Filter.bRecursivePaths = true;
 	Filter.ClassPaths.Add(UMaterialInterface::StaticClass()->GetClassPathName());
-	
 
 	for (const FDirectoryPath& Dir : Settings->DirectoriesToScan)
 	{
-		Filter.PackagePaths.Add(FName(*Dir.Path));
+		FString SanitizedPath = Dir.Path.TrimStartAndEnd();
+		if (!SanitizedPath.IsEmpty())
+		{
+			if (SanitizedPath.EndsWith(TEXT("/")))
+			{
+				SanitizedPath.LeftChopInline(1);
+			}
+			Filter.PackagePaths.Add(FName(*SanitizedPath));
+		}
+	}
+
+	// Default to /Game if no valid path was specified
+	if (Filter.PackagePaths.Num() == 0)
+	{
+		Filter.PackagePaths.Add(FName(TEXT("/Game")));
 	}
 
 	TArray<FAssetData> AssetDataList;
@@ -252,9 +291,10 @@ void UPSOAutopilotCoreSubsystem::ProcessLoadedBatch()
 	AdvanceStateMachine();
 }
 
-void UPSOAutopilotCoreSubsystem::BroadcastProgress(const FString& StatusMessage) const
+void UPSOAutopilotCoreSubsystem::BroadcastProgress(const FString& StatusMessage)
 {
-	const float Progress = (float)TotalAssetsProcessed / (float)FMath::Max(1, TotalAssetsToProcess);
+	LatestStatusMessage = StatusMessage;
+	const float Progress = GetOverallProgress();
 	OnProgressUpdated.Broadcast(Progress, StatusMessage);
 }
 
@@ -266,7 +306,6 @@ void UPSOAutopilotCoreSubsystem::ForceAssetWarmup(UObject* Asset)
 		// effectively triggers the local driver compilation if it's not cached.
 		Material->CacheShaders(EMaterialShaderPrecompileMode::Background);
 	}
-	
 }
 
 void UPSOAutopilotCoreSubsystem::UnloadBatchAndGC()
@@ -295,11 +334,8 @@ void UPSOAutopilotCoreSubsystem::UnloadBatchAndGC()
 
 void UPSOAutopilotCoreSubsystem::CompleteWarmup()
 {
-	OnProgressUpdated.Broadcast(1.0f, TEXT("Warmup Complete!"));
+	BroadcastProgress(TEXT("Warmup Complete!"));
 	OnWarmupComplete.Broadcast();
 	CurrentState = EPSOWarmupState::Idle;
 	UE_LOG(LogPSOAutopilotCore, Log, TEXT("PSO Autopilot Warmup Finished successfully."));
 }
-
-
-

@@ -1,13 +1,13 @@
 {
 	"FileVersion": 3,
-	"Version": 2,
-	"VersionName": "0.2.0",
-	"FriendlyName": "PSO Autopilot",
-	"Description": "Memory-safe, asynchronous shader compilation and PSO warm-up system to eliminate in-game stutters without freezing loading screens.",
+	"Version": 3,
+	"VersionName": "0.3.0",
+	"FriendlyName": "PSO Autopilot Core",
+	"Description": "Open-source, memory-safe asynchronous material shader compilation and PSO warm-up system for Unreal Engine 5 to eliminate in-game stutters without freezing loading screens.",
 	"Category": "Performance",
 	"CreatedBy": "GregOrigin",
-	"CreatedByURL": "www.gregorigin.com",
-	"DocsURL": "https://github.com/gregorik/PSO-Autopilot",
+	"CreatedByURL": "https://gregorigin.com",
+	"DocsURL": "https://github.com/gregorik/PSO-Autopilot#readme",
 	"MarketplaceURL": "",
 	"SupportURL": "https://discord.gg/nqYQ5mtmHb",
 	"EngineVersion": "5.7.0",
@@ -15,6 +15,13 @@
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,
 	"Installed": false,
+	"SupportedTargetPlatforms": [
+		"Win64",
+		"Mac",
+		"Linux",
+		"Android",
+		"IOS"
+	],
 	"Modules": [
 		{
 			"Name": "PSOAutopilotCore",
@@ -23,8 +30,11 @@
 			"PlatformAllowList": [
 				"Win64",
 				"Mac",
-				"Linux"
+				"Linux",
+				"Android",
+				"IOS"
 			]
 		}
 	]
 }
+
